@@ -8,10 +8,24 @@ import (
 	"strings"
 )
 
-const PATH_NAMES_SEP = "\\"
+// PathNamesSep Символ разделитель для сериализации файлов в дериктории из слайса в строку
+const PathNamesSep = "\\"
 
 func print(out io.Writer, isDir bool, level int) {
 
+}
+
+// PrevDirNames foo bar
+type prevDirNames []string
+
+func (prevNames *prevDirNames) push(names []string) {
+	*prevNames = append(*prevNames, strings.Join(names, PathNamesSep))
+}
+
+func (prevNames *prevDirNames) pop() (names []string) {
+	len := len(*prevNames)
+	names, *prevNames = strings.Split((*prevNames)[len-1], PathNamesSep), (*prevNames)[:len]
+	return
 }
 
 func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
@@ -20,8 +34,8 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 	var path string
 	level := 0
 	names := []string{rootPath}
-	// Переменная для сохранения ф
-	var prevNames []string
+	// Переменная для сохранения иерархии файлов при разборе подпапок
+	var prevNames prevDirNames
 	for len(names) > 0 {
 		path, names = names[0], names[1:]
 		// Получение файла
@@ -34,16 +48,18 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 		if err != nil {
 			return
 		}
-		// Eсли директория то получаем список вложенных файлов и папок
+		// Eсли директория то получаем новый список вложенных файлов и папок
+		// а старый сохраняем
 		if stat.IsDir() {
 			// Сохранение текущей дериктории
-			prevNames = append(prevNames, strings.Join(names, PATH_NAMES_SEP))
+			prevNames.push(names)
 			names, err = file.Readdirnames(0)
 			if err != nil {
 				return
 			}
 			sort.Strings(names)
 		}
+
 		fmt.Printf("%#v\n", names)
 		print(out, stat.IsDir(), level)
 	}
