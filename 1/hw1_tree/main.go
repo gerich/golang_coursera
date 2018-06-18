@@ -1,41 +1,66 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"sort"
+	"path/filepath"
 	"strings"
 )
 
-// PathNamesSep Символ разделитель для сериализации файлов в дериктории из слайса в строку
-const PathNamesSep = "\\"
+const (
+	pathNamesSep = "\\"
+	leaf         = "├───"
+	endLeaf      = "└───"
+)
 
-func print(out io.Writer, isDir bool, level int) {
-
+func print(out io.Writer, path string, isDir bool) {
+	var pathForPrint string
+	for level := strings.Count(path, string(os.PathSeparator)) - 1; level != 0; level-- {
+		pathForPrint += "│\t"
+	}
+	if isDir {
+		pathForPrint += leaf
+	} else {
+		pathForPrint += endLeaf
+	}
+	pathForPrint += filepath.Base(path) + "\n"
+	out.Write([]byte(pathForPrint))
 }
 
 // PrevDirNames foo bar
 type prevDirNames []string
 
 func (prevNames *prevDirNames) push(names []string) {
-	*prevNames = append(*prevNames, strings.Join(names, PathNamesSep))
+	if len(names) > 0 {
+		*prevNames = append(*prevNames, strings.Join(names, pathNamesSep))
+	}
 }
 
 func (prevNames *prevDirNames) pop() (names []string) {
 	len := len(*prevNames)
-	names, *prevNames = strings.Split((*prevNames)[len-1], PathNamesSep), (*prevNames)[:len]
+	names, *prevNames = strings.Split((*prevNames)[len-1], pathNamesSep), (*prevNames)[:len-1]
 	return
+}
+
+func prepareNames(names []string, rootPath string) []string {
+	newNames := make([]string, len(names))
+	for index, path := range names {
+		if path == "" {
+			continue
+		}
+		newNames[index] = filepath.Join(rootPath, path)
+	}
+	return newNames
 }
 
 func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 	var file *os.File
 	var stat os.FileInfo
 	var path string
-	level := 0
 	names := []string{rootPath}
 	// Переменная для сохранения иерархии файлов при разборе подпапок
 	var prevNames prevDirNames
+	isRoot := true
 	for len(names) > 0 {
 		path, names = names[0], names[1:]
 		// Получение файла
@@ -57,11 +82,20 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 			if err != nil {
 				return
 			}
-			sort.Strings(names)
+			names = prepareNames(names, path)
 		}
-
-		fmt.Printf("%#v\n", names)
-		print(out, stat.IsDir(), level)
+		// Печать
+		if (stat.IsDir() || (!stat.IsDir() && printFiles)) && !isRoot {
+			print(out, path, stat.IsDir())
+		}
+		if isRoot {
+			isRoot = false
+		}
+		file.Close()
+		// Если в этой директории кончились файлы то идем на уровень ниже
+		if len(names) == 0 && len(prevNames) > 0 {
+			names = prevNames.pop()
+		}
 	}
 	return
 }

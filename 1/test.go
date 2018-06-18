@@ -5,10 +5,7 @@ import (
 )
 
 func main() {
-	foo := &[]string{"foo", "bar"}
-	bar := *foo
+	foo := []string{"foo", "bar"}
 
-	a, b, c := bar[0], bar[1], (*foo)[2:]
-
-	fmt.Println(a, b, c)
+	fmt.Println(foo[:2])
 }

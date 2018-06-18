@@ -36,8 +36,8 @@
             "mode": "debug",
             "program": "${file}",
             "args": [
-                ".",
-                "-f"
+                "testdata",
+                // "-f"
             ]
         },
         {
