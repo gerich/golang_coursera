@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -13,17 +15,31 @@ const (
 	endLeaf      = "└───"
 )
 
-func print(out io.Writer, path string, isDir bool) {
+func print(out io.Writer, path string, stat os.FileInfo, isLastFile bool) {
 	var pathForPrint string
+	var sizeString string
 	for level := strings.Count(path, string(os.PathSeparator)) - 1; level != 0; level-- {
-		pathForPrint += "│\t"
+		if !isLastFile {
+			pathForPrint += "│"
+		}
+		pathForPrint += "\t"
 	}
-	if isDir {
+	if !isLastFile {
 		pathForPrint += leaf
 	} else {
 		pathForPrint += endLeaf
 	}
-	pathForPrint += filepath.Base(path) + "\n"
+	pathForPrint += filepath.Base(path)
+	if !stat.IsDir() {
+		if stat.Size() > 0 {
+			sizeString = strconv.Itoa(int(stat.Size())) + "b"
+		} else {
+			sizeString = "empty"
+		}
+		pathForPrint += " (" + sizeString + ")"
+	}
+	pathForPrint += "\n"
+
 	out.Write([]byte(pathForPrint))
 }
 
@@ -82,11 +98,12 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 			if err != nil {
 				return
 			}
+			sort.Strings(names)
 			names = prepareNames(names, path)
 		}
 		// Печать
 		if (stat.IsDir() || (!stat.IsDir() && printFiles)) && !isRoot {
-			print(out, path, stat.IsDir())
+			print(out, path, stat, len(names) == 0)
 		}
 		if isRoot {
 			isRoot = false
