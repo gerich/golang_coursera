@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "test",
-            "program": "${workspaceRoot}"
+            "program": "${workspaceRoot}/hw1_tree"
         },
         {
             "name": "Launch test function",

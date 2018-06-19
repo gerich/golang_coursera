@@ -5,7 +5,6 @@ import (
 )
 
 func main() {
-	foo := []string{"foo", "bar"}
-
-	fmt.Println(foo[:2])
+	foo := []string{"foo", "bar", "baz"}
+	fmt.Println(foo[3:])
 }

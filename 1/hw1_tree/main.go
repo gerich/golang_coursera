@@ -2,11 +2,10 @@ package main
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -15,11 +14,13 @@ const (
 	endLeaf      = "└───"
 )
 
-func print(out io.Writer, path string, stat os.FileInfo, isLastFile bool) {
+func print(out io.Writer, path dirFiles, currentFiles dirFiles, stat os.FileInfo) {
 	var pathForPrint string
 	var sizeString string
-	for level := strings.Count(path, string(os.PathSeparator)) - 1; level != 0; level-- {
-		if !isLastFile {
+	higherLevel := path.Len()
+	isLastFile := len(currentFiles) == 0
+	for level := higherLevel; level != 0; level-- {
+		if !isLastFile || level > 0 {
 			pathForPrint += "│"
 		}
 		pathForPrint += "\t"
@@ -29,7 +30,7 @@ func print(out io.Writer, path string, stat os.FileInfo, isLastFile bool) {
 	} else {
 		pathForPrint += endLeaf
 	}
-	pathForPrint += filepath.Base(path)
+	pathForPrint += stat.Name()
 	if !stat.IsDir() {
 		if stat.Size() > 0 {
 			sizeString = strconv.Itoa(int(stat.Size())) + "b"
@@ -43,75 +44,84 @@ func print(out io.Writer, path string, stat os.FileInfo, isLastFile bool) {
 	out.Write([]byte(pathForPrint))
 }
 
-// PrevDirNames foo bar
-type prevDirNames []string
-
-func (prevNames *prevDirNames) push(names []string) {
-	if len(names) > 0 {
-		*prevNames = append(*prevNames, strings.Join(names, pathNamesSep))
+func dirPath(rootPath string, paths []os.FileInfo) string {
+	path := rootPath
+	for _, stat := range paths {
+		path += string(os.PathSeparator) + stat.Name()
 	}
+	return path
 }
 
-func (prevNames *prevDirNames) pop() (names []string) {
-	len := len(*prevNames)
-	names, *prevNames = strings.Split((*prevNames)[len-1], pathNamesSep), (*prevNames)[:len-1]
-	return
+type dirFiles []os.FileInfo
+
+func (nf dirFiles) Len() int      { return len(nf) }
+func (nf dirFiles) Swap(i, j int) { nf[i], nf[j] = nf[j], nf[i] }
+func (nf dirFiles) Less(i, j int) bool {
+	// Use path names
+	pathA := nf[i].Name()
+	pathB := nf[j].Name()
+	// // Grab integer value of each filename by parsing the string and slicing off
+	// // the extension
+	// a, err1 := strconv.ParseInt(pathA[0:strings.LastIndex(pathA, ".")], 10, 64)
+	// b, err2 := strconv.ParseInt(pathB[0:strings.LastIndex(pathB, ".")], 10, 64)
+	// // If any were not numbers sort lexographically
+	// if err1 != nil || err2 != nil {
+	return pathA < pathB
+	// }
+	// // Which integer is smaller?
+	// return a < b
 }
 
-func prepareNames(names []string, rootPath string) []string {
-	newNames := make([]string, len(names))
-	for index, path := range names {
-		if path == "" {
-			continue
+func filterPrinted(stat os.FileInfo, files dirFiles) dirFiles {
+	var index int
+	var file os.FileInfo
+	for index, file = range files {
+		if file.Name() == stat.Name() {
+			break
 		}
-		newNames[index] = filepath.Join(rootPath, path)
 	}
-	return newNames
+	if len(files)-1 == index {
+		return files[len(files):]
+	}
+	return files[index+1:]
 }
 
 func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
-	var file *os.File
+	var prevFiles dirFiles
 	var stat os.FileInfo
-	var path string
-	names := []string{rootPath}
+	var files dirFiles
+	files, err = ioutil.ReadDir(rootPath)
+	if err != nil {
+		return
+	}
 	// Переменная для сохранения иерархии файлов при разборе подпапок
-	var prevNames prevDirNames
-	isRoot := true
-	for len(names) > 0 {
-		path, names = names[0], names[1:]
-		// Получение файла
-		file, err = os.Open(path)
-		if err != nil {
-			return
-		}
+	for len(files) > 0 {
+		stat, files = files[0], files[1:]
 		// Получение инфы о файла
-		stat, err = file.Stat()
-		if err != nil {
-			return
-		}
+
 		// Eсли директория то получаем новый список вложенных файлов и папок
 		// а старый сохраняем
 		if stat.IsDir() {
 			// Сохранение текущей дериктории
-			prevNames.push(names)
-			names, err = file.Readdirnames(0)
+			prevFiles = append(prevFiles, stat)
+			files, err = ioutil.ReadDir(dirPath(rootPath, prevFiles))
 			if err != nil {
 				return
 			}
-			sort.Strings(names)
-			names = prepareNames(names, path)
+			sort.Sort(files)
 		}
 		// Печать
-		if (stat.IsDir() || (!stat.IsDir() && printFiles)) && !isRoot {
-			print(out, path, stat, len(names) == 0)
+		if stat.IsDir() || (!stat.IsDir() && printFiles) {
+			print(out, prevFiles, files, stat)
 		}
-		if isRoot {
-			isRoot = false
-		}
-		file.Close()
 		// Если в этой директории кончились файлы то идем на уровень ниже
-		if len(names) == 0 && len(prevNames) > 0 {
-			names = prevNames.pop()
+		if len(files) == 0 && len(prevFiles) > 0 {
+			stat, prevFiles = prevFiles[len(prevFiles)-1], prevFiles[:len(prevFiles)-1]
+			files, err = ioutil.ReadDir(dirPath(rootPath, prevFiles))
+			if err != nil {
+				return
+			}
+			files = filterPrinted(stat, files)
 		}
 	}
 	return
