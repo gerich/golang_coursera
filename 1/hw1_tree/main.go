@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,13 +14,11 @@ const (
 	endLeaf      = "└───"
 )
 
-func print(out io.Writer, path dirFiles, currentFiles dirFiles, stat os.FileInfo) {
+func print(out io.Writer, markers []bool, isLastLevel bool, stat os.FileInfo) {
 	var pathForPrint string
 	var sizeString string
-	higherLevel := path.Len()
-	isLastLevel := len(currentFiles) == 0
-	for level := higherLevel; level > 0; level-- {
-		if !isLastLevel && level > 0 {
+	for level := 0; level < len(markers); level++ {
+		if !markers[level] {
 			pathForPrint += "│"
 		}
 		pathForPrint += "\t"
@@ -78,6 +75,11 @@ func (nf dirFiles) Less(i, j int) bool {
 func filterPrinted(stat os.FileInfo, files dirFiles) dirFiles {
 	var index int
 	var file os.FileInfo
+
+	if !sort.IsSorted(files) {
+		sort.Sort(files)
+	}
+
 	for index, file = range files {
 		if file.Name() == stat.Name() {
 			break
@@ -89,12 +91,35 @@ func filterPrinted(stat os.FileInfo, files dirFiles) dirFiles {
 	return files[index+1:]
 }
 
+func prepareLastDirMarker(files dirFiles, rootPath string) (markers []bool, err error) {
+	markers = make([]bool, files.Len(), files.Len())
+	var filtered, currFiles dirFiles
+
+	for index, stat := range files {
+		currFiles, err = ioutil.ReadDir(dirPath(rootPath, files[:index]))
+		if err != nil {
+			return
+		}
+		filtered = filterPrinted(stat, currFiles)
+		markers[index] = filtered.Len() == 0
+	}
+
+	if len(files) > 0 {
+		currFiles, err = ioutil.ReadDir(dirPath(rootPath, files[:0]))
+		filtered = filterPrinted(files[0], currFiles)
+		markers[0] = filtered.Len() == 0
+	}
+
+	return
+}
+
 func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 	var prevFiles dirFiles
 	var stat os.FileInfo
 	var files dirFiles
 	files, err = ioutil.ReadDir(rootPath)
 	sort.Sort(files)
+	var markers []bool
 	if err != nil {
 		return
 	}
@@ -103,7 +128,11 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 		stat, files = files[0], files[1:]
 		// Печать
 		if stat.IsDir() || (!stat.IsDir() && printFiles) {
-			print(out, prevFiles, files, stat)
+			markers, err = prepareLastDirMarker(prevFiles, rootPath)
+			if err != nil {
+				return
+			}
+			print(out, markers, len(files) == 0, stat)
 		}
 		// Eсли директория то получаем новый список вложенных файлов и папок
 		// а старый сохраняем
@@ -118,7 +147,7 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 				sort.Sort(files)
 			}
 		}
-		fmt.Println(stat.Name())
+
 		// Если в этой директории кончились файлы то идем на уровень ниже
 		for len(prevFiles) > 0 && len(files) == 0 {
 			stat, prevFiles = prevFiles[len(prevFiles)-1], prevFiles[:len(prevFiles)-1]
