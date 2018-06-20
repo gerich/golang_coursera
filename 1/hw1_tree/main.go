@@ -17,20 +17,22 @@ const (
 func print(out io.Writer, path dirFiles, currentFiles dirFiles, stat os.FileInfo) {
 	var pathForPrint string
 	var sizeString string
-	higherLevel := path.Len()
-	isLastFile := len(currentFiles) == 0
-	for level := higherLevel; level != 0; level-- {
-		if !isLastFile || level > 0 {
+	higherLevel := path.Len() - 1
+	isLastLevel := len(currentFiles) == 0
+	for level := higherLevel; level > 0; level-- {
+		if !isLastLevel && level > 0 {
 			pathForPrint += "│"
 		}
 		pathForPrint += "\t"
 	}
-	if !isLastFile {
+
+	if !isLastLevel {
 		pathForPrint += leaf
 	} else {
 		pathForPrint += endLeaf
 	}
 	pathForPrint += stat.Name()
+
 	if !stat.IsDir() {
 		if stat.Size() > 0 {
 			sizeString = strconv.Itoa(int(stat.Size())) + "b"
@@ -91,14 +93,17 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 	var stat os.FileInfo
 	var files dirFiles
 	files, err = ioutil.ReadDir(rootPath)
+	sort.Sort(files)
 	if err != nil {
 		return
 	}
 	// Переменная для сохранения иерархии файлов при разборе подпапок
 	for len(files) > 0 {
 		stat, files = files[0], files[1:]
-		// Получение инфы о файла
-
+		// Печать
+		if stat.IsDir() || (!stat.IsDir() && printFiles) {
+			print(out, prevFiles, files, stat)
+		}
 		// Eсли директория то получаем новый список вложенных файлов и папок
 		// а старый сохраняем
 		if stat.IsDir() {
@@ -109,10 +114,6 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 				return
 			}
 			sort.Sort(files)
-		}
-		// Печать
-		if stat.IsDir() || (!stat.IsDir() && printFiles) {
-			print(out, prevFiles, files, stat)
 		}
 		// Если в этой директории кончились файлы то идем на уровень ниже
 		if len(files) == 0 && len(prevFiles) > 0 {
