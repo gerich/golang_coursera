@@ -16,10 +16,10 @@
             "type": "go",
             "request": "launch",
             "mode": "test",
-            "program": "${workspaceRoot}",
+            "program": "${workspaceRoot}/hw1_tree",
             "args": [
                 "-test.run",
-                "MyTestFunction"
+                "TestTreeDir"
             ]
         },
         {

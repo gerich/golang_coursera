@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,7 +18,7 @@ const (
 func print(out io.Writer, path dirFiles, currentFiles dirFiles, stat os.FileInfo) {
 	var pathForPrint string
 	var sizeString string
-	higherLevel := path.Len() - 1
+	higherLevel := path.Len()
 	isLastLevel := len(currentFiles) == 0
 	for level := higherLevel; level > 0; level-- {
 		if !isLastLevel && level > 0 {
@@ -113,10 +114,13 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 			if err != nil {
 				return
 			}
-			sort.Sort(files)
+			if !sort.IsSorted(files) {
+				sort.Sort(files)
+			}
 		}
+		fmt.Println(stat.Name())
 		// Если в этой директории кончились файлы то идем на уровень ниже
-		if len(files) == 0 && len(prevFiles) > 0 {
+		for len(prevFiles) > 0 && len(files) == 0 {
 			stat, prevFiles = prevFiles[len(prevFiles)-1], prevFiles[:len(prevFiles)-1]
 			files, err = ioutil.ReadDir(dirPath(rootPath, prevFiles))
 			if err != nil {
