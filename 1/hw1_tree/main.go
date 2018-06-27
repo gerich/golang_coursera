@@ -14,9 +14,13 @@ const (
 	endLeaf      = "└───"
 )
 
-func print(out io.Writer, markers []bool, isLastLevel bool, stat os.FileInfo) {
+func print(out io.Writer, markers []bool, files dirFiles, stat os.FileInfo, printFiles bool) {
 	var pathForPrint string
 	var sizeString string
+	isLastLevel := len(files) == 0
+	if !printFiles {
+		isLastLevel = len(filterDirs(files)) == 0
+	}
 	for level := 0; level < len(markers); level++ {
 		if !markers[level] {
 			pathForPrint += "│"
@@ -91,12 +95,15 @@ func filterPrinted(stat os.FileInfo, files dirFiles) dirFiles {
 	return files[index+1:]
 }
 
-func prepareLastDirMarker(files dirFiles, rootPath string) (markers []bool, err error) {
+func prepareLastDirMarker(files dirFiles, rootPath string, printFiles bool) (markers []bool, err error) {
 	markers = make([]bool, files.Len(), files.Len())
 	var filtered, currFiles dirFiles
 
 	for index, stat := range files {
 		currFiles, err = ioutil.ReadDir(dirPath(rootPath, files[:index]))
+		if !printFiles {
+			currFiles = filterDirs(currFiles)
+		}
 		if err != nil {
 			return
 		}
@@ -107,10 +114,24 @@ func prepareLastDirMarker(files dirFiles, rootPath string) (markers []bool, err 
 	if len(files) > 0 {
 		currFiles, err = ioutil.ReadDir(dirPath(rootPath, files[:0]))
 		filtered = filterPrinted(files[0], currFiles)
+		if !printFiles {
+			filtered = filterDirs(filtered)
+		}
 		markers[0] = filtered.Len() == 0
 	}
 
 	return
+}
+
+func filterDirs(files dirFiles) dirFiles {
+	var filtered dirFiles
+	for _, cur := range files {
+		if cur.IsDir() {
+			filtered = append(filtered, cur)
+		}
+	}
+
+	return filtered
 }
 
 func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
@@ -128,11 +149,11 @@ func dirTree(out io.Writer, rootPath string, printFiles bool) (err error) {
 		stat, files = files[0], files[1:]
 		// Печать
 		if stat.IsDir() || (!stat.IsDir() && printFiles) {
-			markers, err = prepareLastDirMarker(prevFiles, rootPath)
+			markers, err = prepareLastDirMarker(prevFiles, rootPath, printFiles)
 			if err != nil {
 				return
 			}
-			print(out, markers, len(files) == 0, stat)
+			print(out, markers, files, stat, printFiles)
 		}
 		// Eсли директория то получаем новый список вложенных файлов и папок
 		// а старый сохраняем
