@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "test",
-            "program": "${workspaceRoot}/hw1_tree"
+            "program": "${workspaceRoot}/hw2_signer"
         },
         {
             "name": "Launch test function",
