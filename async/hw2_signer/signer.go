@@ -33,10 +33,10 @@ func ExecutePipeline(jobs ...job) {
 	var in, out chan interface{}
 	for index, curr := range jobs {
 		out = make(chan interface{}, 1)
-		if index == 0 {
-			curr(in, out)
+		if index%2 == 0 {
+			go curr(in, out)
 		} else {
-			curr(out, in)
+			go curr(out, in)
 		}
 		in = make(chan interface{}, 1)
 	}
