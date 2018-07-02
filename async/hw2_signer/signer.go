@@ -1,28 +1,43 @@
 package main
 
-import (
-	"sort"
-)
-
 // SingleHash single hash
-func SingleHash(in, out chan) job {
-	return DataSignerCrc32(data) + "~" + DataSignerCrc32(DataSignerMd5(data))
+func SingleHash(in, out chan interface{}) {
+	data := <-in
+	str, _ := data.(string)
+	out <- DataSignerCrc32(str) + "~" + DataSignerCrc32(DataSignerMd5(str))
 }
 
 // MultiHash multi hash
-func MultiHash() job {
-	return data
+func MultiHash(in, out chan interface{}) {
+	res := ""
+	data := <-in
+	str, _ := data.(string)
+	for index := 0; index < 6; index++ {
+		res += DataSignerCrc32(string(index) + str)
+	}
+	out <- res
 }
 
-func CombineResults(data []string) job {
-	sort.Strings(data)
-	for _, str := range data {
+// CombineResults combine results
+func CombineResults(in, out chan interface{}) {
+	res := ""
+	for data := range in {
+		str, _ := data.(string)
 		res += str + "_"
 	}
-	return res[:len(res)-1]
+	out <- res[:len(res)-1]
 }
 
 //ExecutePipeline execute pipeline
 func ExecutePipeline(jobs ...job) {
-
+	var in, out chan interface{}
+	for index, curr := range jobs {
+		out = make(chan interface{}, 1)
+		if index == 0 {
+			curr(in, out)
+		} else {
+			curr(out, in)
+		}
+		in = make(chan interface{}, 1)
+	}
 }
