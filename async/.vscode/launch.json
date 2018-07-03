@@ -11,8 +11,7 @@
             "mode": "test",
             "program": "${workspaceRoot}/hw2_signer",
             "args":[
-                "-v",
-                "-race"
+                "-test.v"
             ]
         },
         {
@@ -20,10 +19,10 @@
             "type": "go",
             "request": "launch",
             "mode": "test",
-            "program": "${workspaceRoot}/hw1_tree",
+            "program": "${workspaceRoot}/hw2_signer/extra_test.go",
             "args": [
                 "-test.run",
-                "TestTreeDir"
+                "TestByIlia"
             ]
         },
         {

@@ -30,14 +30,12 @@ func CombineResults(in, out chan interface{}) {
 
 //ExecutePipeline execute pipeline
 func ExecutePipeline(jobs ...job) {
-	var in, out chan interface{}
-	for index, curr := range jobs {
-		out = make(chan interface{}, 1)
-		if index%2 == 0 {
-			go curr(in, out)
-		} else {
-			go curr(out, in)
-		}
-		in = make(chan interface{}, 1)
+	out := make(chan interface{}, 100)
+	in := make(chan interface{}, 100)
+	for _, curr := range jobs {
+		curr(in, out)
+		in = out
+		close(out)
+		out = make(chan interface{}, 100)
 	}
 }
