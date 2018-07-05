@@ -22,7 +22,18 @@
             "program": "${workspaceRoot}/hw2_signer/extra_test.go",
             "args": [
                 "-test.run",
-                "TestByIlia"
+                "TestSigner"
+            ]
+        },
+        {
+            "name": "Test pipeline",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceRoot}/hw2_signer/main_test.go",
+            "args": [
+                "-test.run",
+                "TestPipeline"
             ]
         },
         {
