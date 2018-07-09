@@ -19,7 +19,7 @@ func GetUser(key string) (*User, error) {
 		user := &User{}
 		err := json.Unmarshal(jsonStr, user)
 		if err != nil {
-			return nil, fmt.Errorf("Cant decode json")
+			return nil, fmt.Errorf("Cant decode json: %v", err)
 		}
 		return user, nil
 	}

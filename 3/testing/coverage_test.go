@@ -1,13 +1,13 @@
 package main
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
-type TestCase struct{
-	Key string
-	User *User
+type TestCase struct {
+	Key     string
+	User    *User
 	IsError bool
 }
 
@@ -25,11 +25,11 @@ func TestGetUser(t *testing.T) {
 			t.Errorf("[%d] expected error, got nil", caseNum)
 		}
 		if !item.IsError && err != nil {
-			t.Errorf("[%d] unexpected error", caseNum, err)
+			t.Errorf("[%d] %v unexpected error", caseNum, err)
 		}
 		if !reflect.DeepEqual(u, item.User) {
 			t.Errorf("[%d] wrong results: got %+v, expected %+v",
-			caseNum, u, item.User)
+				caseNum, u, item.User)
 		}
 	}
 
