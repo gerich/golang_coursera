@@ -24,6 +24,7 @@ type user struct {
 // вам надо написать более быструю оптимальную этой функции
 func FastSearch(out io.Writer) {
 	file, err := os.Open(filePath)
+	defer file.Close()
 	if err != nil {
 		panic(err)
 	}
