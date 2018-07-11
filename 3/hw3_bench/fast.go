@@ -15,6 +15,12 @@ var (
 	reMSIE    = regexp.MustCompile("MSIE")
 )
 
+type user struct {
+	browsers []string
+	name     string
+	email    string
+}
+
 // вам надо написать более быструю оптимальную этой функции
 func FastSearch(out io.Writer) {
 	file, err := os.Open(filePath)
@@ -31,6 +37,7 @@ func FastSearch(out io.Writer) {
 	seenBrowsers := []string{}
 	uniqueBrowsers := 0
 	foundUsers := ""
+	notSeenBefore := true
 
 	lines := strings.Split(string(fileContents), "\n")
 
@@ -64,7 +71,7 @@ func FastSearch(out io.Writer) {
 			}
 			if ok := reAndroid.MatchString(browser); ok {
 				isAndroid = true
-				notSeenBefore := true
+				notSeenBefore = true
 				for _, item := range seenBrowsers {
 					if item == browser {
 						notSeenBefore = false
@@ -86,7 +93,7 @@ func FastSearch(out io.Writer) {
 			}
 			if ok := reMSIE.MatchString(browser); ok {
 				isMSIE = true
-				notSeenBefore := true
+				notSeenBefore = true
 				for _, item := range seenBrowsers {
 					if item == browser {
 						notSeenBefore = false
