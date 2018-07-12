@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +13,7 @@ const (
 	strMSIE    = "MSIE"
 )
 
+//easyjson:json
 type User struct {
 	Browsers []string
 	Name     string
@@ -33,13 +34,17 @@ func FastSearch(out io.Writer) {
 		panic(err)
 	}
 
-	// scanner := bufio.NewReader()
+	scanner := bufio.NewScanner(file)
 	// scanner.Split(bufio.ScanLines)
-	dec := json.NewDecoder(file)
+	// dec := json.NewDecoder(file)
 	i := -1
-	var u User
-	for dec.More() {
-		err := dec.Decode(&u)
+	u := User{}
+	var l []byte
+	for scanner.Scan() {
+		// err := dec.Decode(&u)
+		l = scanner.Bytes()
+		fmt.Println()
+		err := u.UnmarshalJSON(l)
 		if err != nil {
 			panic(err)
 		}
