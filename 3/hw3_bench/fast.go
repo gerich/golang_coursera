@@ -4,106 +4,72 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 )
 
-var (
-	reAndroid = regexp.MustCompile("Android")
-	reMSIE    = regexp.MustCompile("MSIE")
+const (
+	strAndroid = "Android"
+	strMSIE    = "MSIE"
 )
 
-type user struct {
-	browsers []string
-	name     string
-	email    string
+type User struct {
+	Browsers []string
+	Name     string
+	Email    string
 }
 
 // вам надо написать более быструю оптимальную этой функции
 func FastSearch(out io.Writer) {
+	foundUsers := make([]string, 0, 100)
+	notSeenBefore := true
+	var isAndroid bool
+	var isMSIE bool
+	seenBrowsers := make(map[string]bool)
+
 	file, err := os.Open(filePath)
 	defer file.Close()
 	if err != nil {
 		panic(err)
 	}
 
-	fileContents, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-
-	r := regexp.MustCompile("@")
-	seenBrowsers := []string{}
-	uniqueBrowsers := 0
-	foundUsers := ""
-	notSeenBefore := true
-
-	lines := strings.Split(string(fileContents), "\n")
-
-	users := make([]map[string]interface{}, 0)
-	for _, line := range lines {
-		user := make(map[string]interface{})
-		// fmt.Printf("%v %v\n", err, line)
-		err := json.Unmarshal([]byte(line), &user)
+	// scanner := bufio.NewReader()
+	// scanner.Split(bufio.ScanLines)
+	dec := json.NewDecoder(file)
+	i := -1
+	var u User
+	for dec.More() {
+		err := dec.Decode(&u)
 		if err != nil {
 			panic(err)
 		}
-		users = append(users, user)
-	}
 
-	for i, user := range users {
+		i++
 
-		isAndroid := false
-		isMSIE := false
-
-		browsers, ok := user["browsers"].([]interface{})
-		if !ok {
+		if len(u.Browsers) == 0 {
 			// log.Println("cant cast browsers")
 			continue
 		}
 
-		for _, browserRaw := range browsers {
-			browser, ok := browserRaw.(string)
-			if !ok {
-				// log.Println("cant cast browser to string")
-				continue
-			}
-			if ok := reAndroid.MatchString(browser); ok {
-				isAndroid = true
-				notSeenBefore = true
-				for _, item := range seenBrowsers {
-					if item == browser {
-						notSeenBefore = false
-					}
-				}
-				if notSeenBefore {
-					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
-					seenBrowsers = append(seenBrowsers, browser)
-					uniqueBrowsers++
-				}
-			}
-		}
+		isAndroid = false
+		isMSIE = false
 
-		for _, browserRaw := range browsers {
-			browser, ok := browserRaw.(string)
-			if !ok {
-				// log.Println("cant cast browser to string")
-				continue
-			}
-			if ok := reMSIE.MatchString(browser); ok {
-				isMSIE = true
-				notSeenBefore = true
-				for _, item := range seenBrowsers {
-					if item == browser {
-						notSeenBefore = false
-					}
-				}
-				if notSeenBefore {
+		for _, browser := range u.Browsers {
+			if strings.Contains(browser, strAndroid) {
+				isAndroid = true
+				_, notSeenBefore = seenBrowsers[browser]
+				if !notSeenBefore {
 					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
-					seenBrowsers = append(seenBrowsers, browser)
-					uniqueBrowsers++
+					seenBrowsers[browser] = true
+				}
+			}
+
+			if strings.Contains(browser, strMSIE) {
+				isMSIE = true
+				_, notSeenBefore = seenBrowsers[browser]
+				if !notSeenBefore {
+					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
+					seenBrowsers[browser] = true
 				}
 			}
 		}
@@ -113,10 +79,9 @@ func FastSearch(out io.Writer) {
 		}
 
 		// log.Println("Android and MSIE user:", user["name"], user["email"])
-		email := r.ReplaceAllString(user["email"].(string), " [at] ")
-		foundUsers += fmt.Sprintf("[%d] %s <%s>\n", i, user["name"], email)
+		foundUsers = append(foundUsers, fmt.Sprintf("[%d] %s <%s>\n", i, u.Name, strings.Replace(u.Email, "@", " [at] ", 1)))
 	}
 
-	fmt.Fprintln(out, "found users:\n"+foundUsers)
+	fmt.Fprintln(out, "found users:\n"+strings.Join(foundUsers, ""))
 	fmt.Fprintln(out, "Total unique browsers", len(seenBrowsers))
 }
