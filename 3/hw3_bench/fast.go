@@ -15,9 +15,9 @@ const (
 
 //easyjson:json
 type User struct {
-	Browsers []string
-	Name     string
-	Email    string
+	Browsers []string `json:"browsers,[]string"`
+	Name     string   `json:"name,string"`
+	Email    string   `json:"email,string"`
 }
 
 // вам надо написать более быструю оптимальную этой функции
@@ -43,7 +43,6 @@ func FastSearch(out io.Writer) {
 	for scanner.Scan() {
 		// err := dec.Decode(&u)
 		l = scanner.Bytes()
-		fmt.Println()
 		err := u.UnmarshalJSON(l)
 		if err != nil {
 			panic(err)
