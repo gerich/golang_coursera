@@ -120,6 +120,12 @@ func TestCorrectAccessToken(t *testing.T) {
 	token = ""
 }
 
+func TestFindUsers(t *testing.T) {
+	fixtures := []SearchRequest{
+		SearchRequest{},
+	}
+}
+
 func TestTestServer(t *testing.T) {
 	var users []User
 	var responseUsers []User
